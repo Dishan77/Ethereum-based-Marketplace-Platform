@@ -4,6 +4,79 @@
   margin: 20px;
 }
 
+/* New UI tweaks for KALA */
+body {
+  background: linear-gradient(135deg, #f4e4bc 0%, #d4a574 50%, #8b4513 100%);
+  font-family: 'Poppins', sans-serif;
+}
+
+header {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.rounded-3xl { border-radius: 28px; }
+
+.shadow-xl { box-shadow: 0 8px 30px rgba(0,0,0,0.1); }
+
+.font-extrabold { font-weight: 800; }
+
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.pulse-custom {
+  animation: pulse 2s infinite;
+}
+
+.card-hover:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+}
+
+button:hover {
+  transform: scale(1.02);
+  transition: transform 0.2s ease;
+}
+
+.loading-spinner {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #8b4513;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+
 /* h1 {
   color: #333;
   margin-bottom: 20px;

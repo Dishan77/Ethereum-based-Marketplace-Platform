@@ -1,574 +1,351 @@
-import React, { useState, useEffect } from "react";
-import { ethers } from "ethers";
+import React from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate, Link } from "react-router-dom";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import SellerDashboard from "./components/SellerDashboard";
+import CustomerDashboard from "./components/CustomerDashboard";
+import AdminDashboard from "./components/AdminDashboard";
 import "./App.css";
 
-function App() {
-  const CONTRACT_ADDRESS = "0x788ff72228dafb0eca5c8c6d8e2d3de1d7324c43";
-  const ABI = [
-    {
-      inputs: [
-        {
-          internalType: "address",
-          name: "_owner",
-          type: "address",
-        },
-      ],
-      name: "getItemsByOwner",
-      outputs: [
-        {
-          internalType: "uint256[]",
-          name: "",
-          type: "uint256[]",
-        },
-      ],
-      stateMutability: "view",
-      type: "function",
-    },
-    {
-      inputs: [],
-      name: "itemCount",
-      outputs: [
-        {
-          internalType: "uint256",
-          name: "",
-          type: "uint256",
-        },
-      ],
-      stateMutability: "view",
-      type: "function",
-    },
-    {
-      inputs: [
-        {
-          internalType: "uint256",
-          name: "",
-          type: "uint256",
-        },
-      ],
-      name: "items",
-      outputs: [
-        {
-          internalType: "uint256",
-          name: "id",
-          type: "uint256",
-        },
-        {
-          internalType: "string",
-          name: "name",
-          type: "string",
-        },
-        {
-          internalType: "uint256",
-          name: "price",
-          type: "uint256",
-        },
-        {
-          internalType: "address payable",
-          name: "seller",
-          type: "address",
-        },
-        {
-          internalType: "address",
-          name: "owner",
-          type: "address",
-        },
-        {
-          internalType: "bool",
-          name: "isSold",
-          type: "bool",
-        },
-      ],
-      stateMutability: "view",
-      type: "function",
-    },
-    {
-      inputs: [
-        {
-          internalType: "string",
-          name: "_name",
-          type: "string",
-        },
-        {
-          internalType: "uint256",
-          name: "_price",
-          type: "uint256",
-        },
-      ],
-      name: "listItem",
-      outputs: [],
-      stateMutability: "nonpayable",
-      type: "function",
-    },
-    {
-      inputs: [
-        {
-          internalType: "address",
-          name: "",
-          type: "address",
-        },
-        {
-          internalType: "uint256",
-          name: "",
-          type: "uint256",
-        },
-      ],
-      name: "ownedItems",
-      outputs: [
-        {
-          internalType: "uint256",
-          name: "",
-          type: "uint256",
-        },
-      ],
-      stateMutability: "view",
-      type: "function",
-    },
-    {
-      inputs: [
-        {
-          internalType: "uint256",
-          name: "_id",
-          type: "uint256",
-        },
-      ],
-      name: "purchaseItem",
-      outputs: [],
-      stateMutability: "payable",
-      type: "function",
-    },
-    {
-      inputs: [
-        {
-          internalType: "uint256",
-          name: "_id",
-          type: "uint256",
-        },
-        {
-          internalType: "address",
-          name: "_to",
-          type: "address",
-        },
-      ],
-      name: "transferItem",
-      outputs: [],
-      stateMutability: "nonpayable",
-      type: "function",
-    },
-    {
-      inputs: [
-        {
-          internalType: "uint256",
-          name: "_id",
-          type: "uint256",
-        },
-      ],
-      name: "removeFromSale",
-      outputs: [],
-      stateMutability: "nonpayable",
-      type: "function",
-    },
-  ];
+// Protected Route Component
+const ProtectedRoute = ({ children, allowedRoles }) => {
+  const { isAuthenticated, user, loading } = useAuth();
 
-  const [provider, setProvider] = useState(null);
-  const [signer, setSigner] = useState(null);
-  const [contract, setContract] = useState(null);
-  const [account, setAccount] = useState("");
-  // Items available for purchase (not sold and not owned by current user)
-  const [items, setItems] = useState([]);
-  // Items owned by the current user
-  const [ownedItems, setOwnedItems] = useState([]);
-  // Items listed by the current user
-  const [listedItems, setListedItems] = useState([]);
-  const [loading, setLoading] = useState(false);
+  if (loading) {
+    return <div style={{ padding: '20px', textAlign: 'center' }}>Loading...</div>;
+  }
 
-  // Initialize the application and load data
-  useEffect(() => {
-    const init = async () => {
-      if (typeof window.ethereum !== "undefined") {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        setProvider(provider);
+  if (!isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
 
-        // Listen for account changes in MetaMask
-        window.ethereum.on("accountsChanged", async (accounts) => {
-          setAccount(accounts[0]);
-          const signer = provider.getSigner();
-          setSigner(signer);
-          const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
-          setContract(contract);
+  if (allowedRoles && !allowedRoles.includes(user?.role)) {
+    return <div style={{ padding: '20px', textAlign: 'center' }}>
+      <h2>Access Denied</h2>
+      <p>You don't have permission to access this page.</p>
+      <Link to="/">Go to Home</Link>
+    </div>;
+  }
 
-          await loadAllData(contract, accounts[0]);
-        });
+  return children;
+};
 
-        const accounts = await provider.send("eth_requestAccounts", []);
-        setAccount(accounts[0]);
+// Home/Login Page with Role Selection
+const HomePage = () => {
+  const { connectWallet, login, isAuthenticated, user, loading, account } = useAuth();
+  const [selectedRole, setSelectedRole] = React.useState(null);
 
-        const signer = provider.getSigner();
-        setSigner(signer);
-
-        const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
-        setContract(contract);
-
-        await loadAllData(contract, accounts[0]);
-      }
-    };
-    init();
-  }, []);
-
-  const loadAllData = async (contract, currentAccount) => {
-    setLoading(true);
+  const handleConnect = async () => {
     try {
-      await Promise.all([
-        loadItems(contract, currentAccount),
-        loadOwnedItems(contract, currentAccount),
-        loadListedItems(contract, currentAccount),
-      ]);
+      await connectWallet();
     } catch (error) {
-      console.error("Error loading data:", error);
-    } finally {
-      setLoading(false);
+      console.error('Connection error:', error);
     }
   };
 
-  // Modified loadItems function to filter out sold items AND items owned by the current user
-  const loadItems = async (contract, currentAccount) => {
-    const itemCount = await contract.itemCount();
-    let availableItems = [];
-    for (let i = 1; i <= itemCount; i++) {
-      const item = await contract.items(i);
-      // Only add items that are not sold AND not owned by the current user
-      if (
-        !item.isSold &&
-        item.seller.toLowerCase() !== currentAccount.toLowerCase()
-      ) {
-        availableItems.push({
-          ...item,
-          id: item.id.toNumber(),
-          price: item.price,
-        });
-      }
-    }
-    setItems(availableItems);
-  };
-
-  const loadOwnedItems = async (contract, owner) => {
+  const handleRoleLogin = async (role) => {
     try {
-      const ownedItemIds = await contract.getItemsByOwner(owner);
-      let ownedItemsArray = [];
-      for (let i = 0; i < ownedItemIds.length; i++) {
-        const item = await contract.items(ownedItemIds[i]);
-        ownedItemsArray.push({
-          ...item,
-          id: item.id.toNumber(),
-          price: item.price,
-        });
-      }
-      setOwnedItems(ownedItemsArray);
+      setSelectedRole(role);
+      await login();
     } catch (error) {
-      console.error("Error loading owned items:", error);
-      setOwnedItems([]);
+      console.error('Login error:', error);
+      setSelectedRole(null);
     }
   };
 
-  const loadListedItems = async (contract, currentAccount) => {
-    const itemCount = await contract.itemCount();
-    let userListedItems = [];
-    for (let i = 1; i <= itemCount; i++) {
-      const item = await contract.items(i);
-      // Only add items that are listed by the current user and not sold
-      if (
-        !item.isSold &&
-        item.seller.toLowerCase() === currentAccount.toLowerCase()
-      ) {
-        userListedItems.push({
-          ...item,
-          id: item.id.toNumber(),
-          price: item.price,
-        });
-      }
+  if (isAuthenticated && user) {
+    // Redirect based on selected role or user's role
+    const targetRole = selectedRole || user.role;
+    if (targetRole === 'admin') {
+      return <Navigate to="/admin" replace />;
+    } else if (targetRole === 'seller') {
+      return <Navigate to="/seller" replace />;
+    } else {
+      return <Navigate to="/customer" replace />;
     }
-    setListedItems(userListedItems);
-  };
-
-  const listItem = async (name, price) => {
-    if (!name || !price) {
-      alert("Please provide both item name and price");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      // Convert price from ETH to wei
-      const priceInWei = ethers.utils.parseEther(price);
-      const tx = await contract.listItem(name, priceInWei);
-      await tx.wait();
-
-      // Clear input fields after successful listing
-      document.getElementById("itemName").value = "";
-      document.getElementById("itemPrice").value = "";
-
-      await loadAllData(contract, account);
-    } catch (error) {
-      console.error("Error listing item:", error);
-      alert("Failed to list item. Check console for details.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const purchaseItem = async (id, price) => {
-    setLoading(true);
-    try {
-      // Send the exact price in wei as required by the smart contract
-      const tx = await contract.purchaseItem(id, {
-        value: price,
-      });
-      await tx.wait();
-      await loadAllData(contract, account);
-    } catch (error) {
-      console.error("Error purchasing item:", error);
-      alert("Failed to purchase item. Check console for details.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const transferItem = async (id, toAddress) => {
-    if (!ethers.utils.isAddress(toAddress)) {
-      alert("Please enter a valid Ethereum address");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const tx = await contract.transferItem(id, toAddress);
-      await tx.wait();
-      await loadAllData(contract, account);
-    } catch (error) {
-      console.error("Error transferring item:", error);
-      alert("Failed to transfer item. Check console for details.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const removeFromSale = async (id) => {
-    setLoading(true);
-    try {
-      const tx = await contract.removeFromSale(id);
-      await tx.wait();
-      await loadAllData(contract, account);
-    } catch (error) {
-      console.error("Error removing item from sale:", error);
-      alert("Failed to remove item from sale. Check console for details.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Helper function to format address
-  const formatAddress = (address) => {
-    return `${address.substring(0, 6)}...${address.substring(
-      address.length - 4
-    )}`;
-  };
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-100 via-pink-100 to-blue-100 p-8 font-sans relative">
-      {/* Account logo in top right */}
-      {account && (
-        <div className="absolute top-4 right-4 flex items-center bg-white shadow-md rounded-full p-2 pr-4 hover:shadow-lg transition-all duration-300">
-          <div className="h-10 w-10 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold mr-2 overflow-hidden">
-            <img
-              src={`data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><defs><linearGradient id="a" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%23FF41B4"/><stop offset="100%" stop-color="%236B46EF"/></linearGradient></defs><rect width="40" height="40" fill="url(%23a)"/><text x="50%" y="50%" font-family="Arial" font-size="14" font-weight="bold" text-anchor="middle" dy=".3em" fill="white">${account
-                .substring(2, 4)
-                .toUpperCase()}</text></svg>`}
-              alt="Account"
-              className="h-full w-full"
-            />
+    <div style={{ 
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '20px'
+    }}>
+      <div style={{
+        maxWidth: '900px',
+        width: '100%',
+        backgroundColor: 'white',
+        borderRadius: '16px',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+        overflow: 'hidden'
+      }}>
+        {/* Header */}
+        <div style={{
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          padding: '40px',
+          textAlign: 'center',
+          color: 'white'
+        }}>
+          <h1 style={{ margin: 0, fontSize: '48px', fontWeight: 'bold' }}>KALA 2.0</h1>
+          <p style={{ margin: '10px 0 0 0', fontSize: '18px', opacity: 0.9 }}>
+            Blockchain-Based Artwork Marketplace
+          </p>
+        </div>
+
+        <div style={{ padding: '40px' }}>
+          {!account ? (
+            <div style={{ textAlign: 'center' }}>
+              <h2 style={{ color: '#333', marginBottom: '20px' }}>Welcome</h2>
+              <p style={{ color: '#666', marginBottom: '30px', fontSize: '16px' }}>
+                Connect your MetaMask wallet to get started
+              </p>
+              <button
+                onClick={handleConnect}
+                disabled={loading}
+                style={{
+                  padding: '16px 48px',
+                  fontSize: '18px',
+                  fontWeight: 'bold',
+                  backgroundColor: '#667eea',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  opacity: loading ? 0.6 : 1,
+                  transition: 'all 0.3s',
+                  boxShadow: '0 4px 12px rgba(102,126,234,0.4)'
+                }}
+                onMouseOver={(e) => !loading && (e.target.style.transform = 'translateY(-2px)')}
+                onMouseOut={(e) => (e.target.style.transform = 'translateY(0)')}
+              >
+                {loading ? 'Connecting...' : '🦊 Connect MetaMask'}
+              </button>
+            </div>
+          ) : (
+            <div>
+              <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+                <h2 style={{ color: '#333', marginBottom: '10px' }}>Choose Your Role</h2>
+                <p style={{ color: '#666', fontSize: '14px' }}>
+                  Connected: <code style={{ color: '#667eea', fontSize: '12px' }}>{account.slice(0, 6)}...{account.slice(-4)}</code>
+                </p>
+              </div>
+
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                gap: '20px',
+                marginBottom: '30px'
+              }}>
+                {/* Admin Card */}
+                <div
+                  onClick={() => !loading && handleRoleLogin('admin')}
+                  style={{
+                    padding: '30px',
+                    border: '2px solid #e2e8f0',
+                    borderRadius: '12px',
+                    textAlign: 'center',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.3s',
+                    backgroundColor: selectedRole === 'admin' ? '#f0f4ff' : 'white',
+                    borderColor: selectedRole === 'admin' ? '#667eea' : '#e2e8f0'
+                  }}
+                  onMouseOver={(e) => {
+                    if (!loading) {
+                      e.currentTarget.style.borderColor = '#667eea';
+                      e.currentTarget.style.transform = 'translateY(-4px)';
+                      e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.1)';
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    if (selectedRole !== 'admin') {
+                      e.currentTarget.style.borderColor = '#e2e8f0';
+                    }
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  <div style={{ fontSize: '48px', marginBottom: '15px' }}>👨‍💼</div>
+                  <h3 style={{ color: '#333', marginBottom: '10px' }}>Admin</h3>
+                  <p style={{ color: '#666', fontSize: '14px', lineHeight: '1.5' }}>
+                    Manage users, verify sellers, and oversee platform operations
+                  </p>
+                </div>
+
+                {/* Artist/Seller Card */}
+                <div
+                  onClick={() => !loading && handleRoleLogin('seller')}
+                  style={{
+                    padding: '30px',
+                    border: '2px solid #e2e8f0',
+                    borderRadius: '12px',
+                    textAlign: 'center',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.3s',
+                    backgroundColor: selectedRole === 'seller' ? '#f0fdf4' : 'white',
+                    borderColor: selectedRole === 'seller' ? '#10b981' : '#e2e8f0'
+                  }}
+                  onMouseOver={(e) => {
+                    if (!loading) {
+                      e.currentTarget.style.borderColor = '#10b981';
+                      e.currentTarget.style.transform = 'translateY(-4px)';
+                      e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.1)';
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    if (selectedRole !== 'seller') {
+                      e.currentTarget.style.borderColor = '#e2e8f0';
+                    }
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  <div style={{ fontSize: '48px', marginBottom: '15px' }}>🎨</div>
+                  <h3 style={{ color: '#333', marginBottom: '10px' }}>Artist</h3>
+                  <p style={{ color: '#666', fontSize: '14px', lineHeight: '1.5' }}>
+                    List and sell your artworks to global buyers
+                  </p>
+                </div>
+
+                {/* Customer Card */}
+                <div
+                  onClick={() => !loading && handleRoleLogin('customer')}
+                  style={{
+                    padding: '30px',
+                    border: '2px solid #e2e8f0',
+                    borderRadius: '12px',
+                    textAlign: 'center',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.3s',
+                    backgroundColor: selectedRole === 'customer' ? '#fef3f2' : 'white',
+                    borderColor: selectedRole === 'customer' ? '#f97316' : '#e2e8f0'
+                  }}
+                  onMouseOver={(e) => {
+                    if (!loading) {
+                      e.currentTarget.style.borderColor = '#f97316';
+                      e.currentTarget.style.transform = 'translateY(-4px)';
+                      e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.1)';
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    if (selectedRole !== 'customer') {
+                      e.currentTarget.style.borderColor = '#e2e8f0';
+                    }
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  <div style={{ fontSize: '48px', marginBottom: '15px' }}>🛍️</div>
+                  <h3 style={{ color: '#333', marginBottom: '10px' }}>Customer</h3>
+                  <p style={{ color: '#666', fontSize: '14px', lineHeight: '1.5' }}>
+                    Browse and purchase unique artworks from verified artists
+                  </p>
+                </div>
+              </div>
+
+              {loading && selectedRole && (
+                <div style={{ textAlign: 'center', color: '#667eea' }}>
+                  <p>Authenticating as {selectedRole}...</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div style={{ marginTop: '40px', padding: '20px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+            <p style={{ fontSize: '12px', color: '#6b7280', margin: 0, textAlign: 'center' }}>
+              <strong>Test Accounts:</strong> Admin (0xf39F...2266) • Artist (0x7099...79C8) • Customer (0x3C44...93BC)
+            </p>
           </div>
-          <span className="text-gray-700 font-medium">
-            {formatAddress(account)}
-          </span>
-        </div>
-      )}
-
-      <h1 className="text-4xl font-bold text-center mb-8 text-gray-800 drop-shadow-md">
-        🛒 Blockchain Marketplace
-      </h1>
-
-      {/* Loading indicator */}
-      {loading && (
-        <div className="text-center mb-6">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-purple-500 border-t-transparent"></div>
-          <p className="mt-2 text-gray-600">Processing transaction...</p>
-        </div>
-      )}
-
-      {/* List Item Section */}
-      <div className="bg-white shadow-lg rounded-2xl p-6 mb-12 max-w-xl mx-auto">
-        <h2 className="text-2xl font-semibold mb-4 text-gray-700">
-          List New Item
-        </h2>
-        <div className="flex flex-col gap-4">
-          <input
-            id="itemName"
-            placeholder="Item Name"
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
-          />
-          <input
-            id="itemPrice"
-            placeholder="Item Price (in ETH)"
-            type="number"
-            step="0.01"
-            min="0"
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
-          />
-          <button
-            className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold py-2 rounded-lg transition duration-300 disabled:opacity-50"
-            onClick={() =>
-              listItem(
-                document.getElementById("itemName").value,
-                document.getElementById("itemPrice").value
-              )
-            }
-            disabled={loading}
-          >
-            🚀 List Item
-          </button>
-        </div>
-      </div>
-
-      {/* Your Listed Items Section */}
-      {/* <div className="mb-12">
-        <h2 className="text-3xl font-semibold mb-6 text-center text-gray-700">
-          Your Listed Items
-        </h2>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {listedItems.length > 0 ? (
-            listedItems.map((item) => (
-              <div
-                key={item.id}
-                className="bg-white shadow-md rounded-xl p-5 space-y-3"
-              >
-                <p>
-                  <strong>Name:</strong> {item.name}
-                </p>
-                <p>
-                  <strong>Price:</strong> {ethers.utils.formatEther(item.price)}{" "}
-                  ETH
-                </p>
-                <p>
-                  <strong>Status:</strong>{" "}
-                  <span className="text-green-500">For Sale</span>
-                </p>
-                <button
-                  className="bg-red-500 hover:bg-red-600 text-white font-semibold w-full py-2 rounded-lg transition disabled:opacity-50"
-                  onClick={() => removeFromSale(item.id)}
-                  disabled={loading}
-                >
-                  Remove from Sale
-                </button>
-              </div>
-            ))
-          ) : (
-            <p className="text-center text-gray-500 col-span-full">
-              You haven't listed any items for sale
-            </p>
-          )}
-        </div>
-      </div> */}
-
-      {/* Items for Sale */}
-      <div className="mb-12">
-        <h2 className="text-3xl font-semibold mb-6 text-center text-gray-700">
-          Items for Sale
-        </h2>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {items.length > 0 ? (
-            items.map((item) => (
-              <div
-                key={item.id}
-                className="bg-white shadow-md rounded-xl p-5 space-y-3"
-              >
-                <p>
-                  <strong>Name:</strong> {item.name}
-                </p>
-                <p>
-                  <strong>Price:</strong> {ethers.utils.formatEther(item.price)}{" "}
-                  ETH
-                </p>
-                <p>
-                  <strong>Seller:</strong> {formatAddress(item.seller)}
-                </p>
-                <button
-                  className="bg-green-500 hover:bg-green-600 text-white font-semibold w-full py-2 rounded-lg transition disabled:opacity-50"
-                  onClick={() => purchaseItem(item.id, item.price)}
-                  disabled={loading}
-                >
-                  Buy Now
-                </button>
-              </div>
-            ))
-          ) : (
-            <p className="text-center text-gray-500 col-span-full">
-              No items currently available for sale
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Owned Items */}
-      <div>
-        <h2 className="text-3xl font-semibold mb-6 text-center text-gray-700">
-          Your Items
-        </h2>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {ownedItems.length > 0 ? (
-            ownedItems.map((item) => (
-              <div
-                key={item.id}
-                className="bg-white shadow-md rounded-xl p-5 space-y-3"
-              >
-                <p>
-                  <strong>Name:</strong> {item.name}
-                </p>
-                <p>
-                  <strong>Price:</strong> {ethers.utils.formatEther(item.price)}{" "}
-                  ETH
-                </p>
-                <p>
-                  <strong>Status:</strong>{" "}
-                  <span className={item.isSold ? "text-gray-500" : "text-green-500"}>
-                    {item.isSold ? "Not For Sale" : "For Sale"}
-                  </span>
-                </p>
-                <input
-                  id={`transferAddress${item.id}`}
-                  placeholder="Transfer to Address"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
-                />
-                <button
-                  className="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold w-full py-2 rounded-lg transition disabled:opacity-50"
-                  onClick={() =>
-                    transferItem(
-                      item.id,
-                      document.getElementById(`transferAddress${item.id}`).value
-                    )
-                  }
-                  disabled={loading}
-                >
-                  Transfer
-                </button>
-              </div>
-            ))
-          ) : (
-            <p className="text-center text-gray-500 col-span-full">
-              You don't own any items yet
-            </p>
-          )}
         </div>
       </div>
     </div>
+  );
+};
+
+// Navigation Header
+const Navigation = () => {
+  const { user, logout, account, isAuthenticated } = useAuth();
+
+  if (!isAuthenticated) return null;
+
+  return (
+    <nav style={{
+      backgroundColor: '#333',
+      padding: '15px 30px',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      color: 'white'
+    }}>
+      <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+        <h2 style={{ margin: 0 }}>KALA 2.0</h2>
+        {user?.role === 'admin' && <Link to="/admin" style={{ color: 'white', textDecoration: 'none' }}>Admin</Link>}
+        {(user?.role === 'seller' || user?.role === 'admin') && <Link to="/seller" style={{ color: 'white', textDecoration: 'none' }}>Seller</Link>}
+        <Link to="/customer" style={{ color: 'white', textDecoration: 'none' }}>Marketplace</Link>
+      </div>
+      <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+        <span style={{ fontSize: '12px' }}>
+          {user?.name || 'User'} ({user?.role}) <br />
+          <code style={{ fontSize: '10px' }}>{account?.slice(0, 6)}...{account?.slice(-4)}</code>
+        </span>
+        <button
+          onClick={logout}
+          style={{
+            padding: '8px 16px',
+            backgroundColor: '#dc3545',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          Logout
+        </button>
+      </div>
+    </nav>
+  );
+};
+
+function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <Navigation />
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/seller"
+            element={
+              <ProtectedRoute allowedRoles={['seller', 'admin']}>
+                <SellerDashboard />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/customer"
+            element={
+              <ProtectedRoute allowedRoles={['customer', 'seller', 'admin']}>
+                <CustomerDashboard />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 }
 
