@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { ethers } from 'ethers';
 import axios from 'axios';
-import { BACKEND_URL } from '../contracts/MarketplaceV2';
+import { BACKEND_URL, LOCAL_CHAIN_ID } from '../contracts/MarketplaceV2';
 
 const AuthContext = createContext();
 

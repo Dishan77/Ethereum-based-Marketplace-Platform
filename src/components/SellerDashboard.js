@@ -3,12 +3,14 @@ import { ethers } from 'ethers';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { MARKETPLACE_V2_ABI, CONTRACT_ADDRESS, BACKEND_URL } from '../contracts/MarketplaceV2';
+import ArtistRegistrationForm from './ArtistRegistrationForm';
 
 const SellerDashboard = () => {
-  const { user, signer, account } = useAuth();
+  const { user, signer, account, token, updateProfile } = useAuth();
   const [myItems, setMyItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [listingItem, setListingItem] = useState(false);
+  const [showRegistrationForm, setShowRegistrationForm] = useState(false);
   
   // Form state
   const [itemName, setItemName] = useState('');
@@ -16,6 +18,8 @@ const SellerDashboard = () => {
   const [itemDescription, setItemDescription] = useState('');
   const [category, setCategory] = useState('');
   const [tags, setTags] = useState('');
+  const [artworkImages, setArtworkImages] = useState([]);
+  const [imagePreviewUrls, setImagePreviewUrls] = useState([]);
 
   useEffect(() => {
     if (account) {
@@ -33,6 +37,32 @@ const SellerDashboard = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleImageChange = (e) => {
+    const files = Array.from(e.target.files);
+    
+    if (artworkImages.length + files.length > 5) {
+      alert('Maximum 5 images allowed');
+      return;
+    }
+
+    // Add new files to existing images
+    setArtworkImages(prev => [...prev, ...files]);
+
+    // Create preview URLs
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreviewUrls(prev => [...prev, reader.result]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeImage = (index) => {
+    setArtworkImages(prev => prev.filter((_, i) => i !== index));
+    setImagePreviewUrls(prev => prev.filter((_, i) => i !== index));
   };
 
   const listNewItem = async (e) => {
@@ -68,19 +98,35 @@ const SellerDashboard = () => {
       // Get the itemId from the event
       const itemCount = await contract.itemCount();
 
+      // Create FormData for image upload
+      const formData = new FormData();
+      formData.append('blockchainId', Number(itemCount));
+      formData.append('sellerAddress', account);
+      formData.append('ipfsHash', ipfsHash);
+      formData.append('category', category);
+      formData.append('name', itemName);
+      formData.append('description', itemDescription);
+      formData.append('price', itemPrice);
+      formData.append('tags', tags);
+      
+      // Append images
+      artworkImages.forEach((image) => {
+        formData.append('artworkImages', image);
+      });
+
       // Create artwork entry in database
       await axios.post(
         `${BACKEND_URL}/api/artworks`,
+        formData,
         {
-          blockchainId: Number(itemCount),
-          sellerAddress: account,
-          ipfsHash,
-          category,
-          tags: tags.split(',').map(t => t.trim())
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
         }
       );
 
-      alert('Item listed successfully!');
+      alert('Artwork listed successfully!');
       
       // Reset form
       setItemName('');
@@ -88,6 +134,8 @@ const SellerDashboard = () => {
       setItemDescription('');
       setCategory('');
       setTags('');
+      setArtworkImages([]);
+      setImagePreviewUrls([]);
       
       fetchMyItems();
     } catch (error) {
@@ -95,6 +143,28 @@ const SellerDashboard = () => {
       alert('Failed to list item: ' + error.message);
     } finally {
       setListingItem(false);
+    }
+  };
+
+  const deleteItem = async (artworkId, blockchainId) => {
+    if (!window.confirm('Are you sure you want to delete this artwork? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      // Delete from database
+      await axios.delete(
+        `${BACKEND_URL}/api/artworks/${artworkId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      alert('Artwork deleted successfully!');
+      fetchMyItems();
+    } catch (error) {
+      console.error('Error deleting item:', error);
+      alert('Failed to delete item: ' + error.message);
     }
   };
 
@@ -114,12 +184,45 @@ const SellerDashboard = () => {
     }
   };
 
+  const handleRegistrationSuccess = async (updatedUser) => {
+    // Refresh user profile
+    await updateProfile(updatedUser);
+    setShowRegistrationForm(false);
+  };
+
+  // Show registration form if user is not a seller/admin and hasn't registered yet
+  console.log('SellerDashboard - User:', user);
+  console.log('SellerDashboard - Role:', user?.role);
+  console.log('SellerDashboard - artistProfileSubmitted:', user?.artistProfileSubmitted);
+  
   if (user?.role !== 'seller' && user?.role !== 'admin') {
+    if (!user?.artistProfileSubmitted || showRegistrationForm) {
+      return (
+        <ArtistRegistrationForm
+          account={account}
+          token={token}
+          onSubmitSuccess={handleRegistrationSuccess}
+        />
+      );
+    }
+
     return (
-      <div style={{ padding: '20px', textAlign: 'center' }}>
-        <h2>Access Denied</h2>
-        <p>You need seller verification to access this dashboard.</p>
-        <p>Your current role: {user?.role}</p>
+      <div style={{ padding: '40px', textAlign: 'center', maxWidth: '600px', margin: '0 auto' }}>
+        <div style={{ 
+          backgroundColor: '#fff3cd', 
+          padding: '30px', 
+          borderRadius: '12px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+        }}>
+          <h2 style={{ color: '#856404', marginBottom: '15px' }}>⏳ Application Under Review</h2>
+          <p style={{ color: '#856404', fontSize: '16px', lineHeight: '1.6' }}>
+            Your artist registration has been submitted and is currently being reviewed by our admin team.
+            You will be able to list artworks once your application is approved.
+          </p>
+          <p style={{ color: '#856404', fontSize: '14px', marginTop: '20px' }}>
+            Current status: <strong>{user?.verificationStatus || 'Pending'}</strong>
+          </p>
+        </div>
       </div>
     );
   }
@@ -216,6 +319,55 @@ const SellerDashboard = () => {
             />
           </div>
 
+          <div style={{ marginBottom: '15px' }}>
+            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+              Artwork Images (Max 5)
+            </label>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleImageChange}
+              style={{ width: '100%', padding: '10px', fontSize: '16px', borderRadius: '4px', border: '1px solid #ccc' }}
+            />
+            {imagePreviewUrls.length > 0 && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '10px', marginTop: '15px' }}>
+                {imagePreviewUrls.map((url, index) => (
+                  <div key={index} style={{ position: 'relative' }}>
+                    <img
+                      src={url}
+                      alt={`Preview ${index + 1}`}
+                      style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '8px' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(index)}
+                      style={{
+                        position: 'absolute',
+                        top: '5px',
+                        right: '5px',
+                        backgroundColor: '#dc3545',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '50%',
+                        width: '25px',
+                        height: '25px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        lineHeight: '1'
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <small style={{ color: '#666', display: 'block', marginTop: '5px' }}>
+              {artworkImages.length}/5 images selected
+            </small>
+          </div>
+
           <button
             type="submit"
             disabled={listingItem}
@@ -259,8 +411,8 @@ const SellerDashboard = () => {
                 <p><strong>Blockchain ID:</strong> {item.blockchain_id}</p>
                 <p><strong>Listed:</strong> {new Date(item.created_at).toLocaleDateString()}</p>
                 
-                {item.qr_code_url && (
-                  <div style={{ marginTop: '10px' }}>
+                <div style={{ marginTop: '15px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  {item.qr_code_url && (
                     <button
                       style={{
                         backgroundColor: '#28a745',
@@ -268,14 +420,27 @@ const SellerDashboard = () => {
                         padding: '8px 16px',
                         border: 'none',
                         borderRadius: '4px',
-                        cursor: 'pointer',
-                        marginRight: '10px'
+                        cursor: 'pointer'
                       }}
                     >
                       View QR Code
                     </button>
-                  </div>
-                )}
+                  )}
+                  
+                  <button
+                    onClick={() => deleteItem(item.id, item.blockchain_id)}
+                    style={{
+                      backgroundColor: '#dc3545',
+                      color: 'white',
+                      padding: '8px 16px',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             ))}
           </div>

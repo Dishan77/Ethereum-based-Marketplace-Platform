@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import pool from '../config/database';
 import { marketplaceContract } from '../config/blockchain';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { upload } from '../middleware/upload';
 
 const router = Router();
 
@@ -101,24 +102,34 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
 /**
  * Create artwork entry in database (after blockchain listing)
  */
-router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
+router.post('/', authenticateToken, upload.array('artworkImages', 5), async (req: AuthRequest, res: Response) => {
   try {
-    const { blockchainId, sellerAddress, ipfsHash, category, tags, qrCodeUrl } = req.body;
+    const { blockchainId, sellerAddress, ipfsHash, category, tags, qrCodeUrl, name, description, price } = req.body;
+    
+    console.log('Received artwork data:', { blockchainId, sellerAddress, ipfsHash, category, tags, name, description, price });
     
     if (!blockchainId || !sellerAddress || !ipfsHash) {
       res.status(400).json({ error: 'Missing required fields' });
       return;
     }
 
+    // Handle uploaded artwork images
+    const artworkImageUrls = req.files ? (req.files as Express.Multer.File[]).map(f => `/uploads/portfolios/${f.filename}`) : [];
+
+    // Convert tags string to array if needed
+    const tagsArray = typeof tags === 'string' ? tags.split(',').map(t => t.trim()).filter(t => t) : (tags || []);
+
     const result = await pool.query(
-      'INSERT INTO artworks (blockchain_id, seller_address, ipfs_metadata_hash, category, tags, qr_code_url) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [blockchainId, sellerAddress.toLowerCase(), ipfsHash, category, tags, qrCodeUrl]
+      'INSERT INTO artworks (blockchain_id, seller_address, ipfs_metadata_hash, category, tags, qr_code_url, name, description, price, image_urls) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
+      [blockchainId, sellerAddress.toLowerCase(), ipfsHash, category, tagsArray, qrCodeUrl, name, description, price, JSON.stringify(artworkImageUrls)]
     );
 
+    console.log('Artwork created successfully:', result.rows[0]);
     res.status(201).json(result.rows[0]);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Create artwork error:', error);
-    res.status(500).json({ error: 'Failed to create artwork entry' });
+    console.error('Error details:', error.message, error.stack);
+    res.status(500).json({ error: 'Failed to create artwork entry', details: error.message });
   }
 });
 
@@ -138,6 +149,35 @@ router.get('/seller/:address', async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Get seller artworks error:', error);
     res.status(500).json({ error: 'Failed to fetch seller artworks' });
+  }
+});
+
+/**
+ * Delete artwork (seller only)
+ */
+router.delete('/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const walletAddress = req.user?.walletAddress;
+
+    // Verify ownership
+    const checkResult = await pool.query(
+      'SELECT * FROM artworks WHERE id = $1 AND seller_address = $2',
+      [id, walletAddress?.toLowerCase()]
+    );
+
+    if (checkResult.rows.length === 0) {
+      res.status(404).json({ error: 'Artwork not found or you do not own this artwork' });
+      return;
+    }
+
+    // Delete artwork
+    await pool.query('DELETE FROM artworks WHERE id = $1', [id]);
+
+    res.json({ message: 'Artwork deleted successfully' });
+  } catch (error) {
+    console.error('Delete artwork error:', error);
+    res.status(500).json({ error: 'Failed to delete artwork' });
   }
 });
 

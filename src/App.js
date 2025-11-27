@@ -327,7 +327,7 @@ function App() {
           <Route
             path="/seller"
             element={
-              <ProtectedRoute allowedRoles={['seller', 'admin']}>
+              <ProtectedRoute allowedRoles={['customer', 'seller', 'admin']}>
                 <SellerDashboard />
               </ProtectedRoute>
             }

@@ -68,7 +68,15 @@ router.post('/login', async (req: Request, res: Response) => {
     const recoveredAddress = verifySignature(message, signature);
 
     if (recoveredAddress.toLowerCase() !== normalizedAddress) {
-      res.status(401).json({ error: 'Invalid signature' });
+      console.error('Signature verification failed:', {
+        expected: normalizedAddress,
+        recovered: recoveredAddress.toLowerCase(),
+        message
+      });
+      res.status(401).json({ 
+        error: 'Invalid signature',
+        details: `Expected ${normalizedAddress} but recovered ${recoveredAddress.toLowerCase()}`
+      });
       return;
     }
 
@@ -101,7 +109,8 @@ router.post('/login', async (req: Request, res: Response) => {
         walletAddress: user.wallet_address,
         role: user.role,
         name: user.name,
-        verificationStatus: user.verification_status
+        verificationStatus: user.verification_status,
+        artistProfileSubmitted: user.artist_profile_submitted || false
       }
     });
   } catch (error) {

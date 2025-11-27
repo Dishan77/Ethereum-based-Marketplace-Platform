@@ -1,0 +1,72 @@
+
+> kala-backend@1.0.0 dev
+> nodemon src/index.ts
+
+[33m[nodemon] 3.1.11[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): src/**/*[39m
+[33m[nodemon] watching extensions: ts,json[39m
+[32m[nodemon] starting `ts-node src/index.ts src/index.ts`[39m
+✓ Blockchain provider initialized
+Contract address: 0x5FbDB2315678afecb367f032d93F642f64180aa3
+
+🚀 KALA Backend API running on port 3001
+Environment: development
+Health check: http://localhost:3001/health
+
+✓ Connected to Neon DB
+✓ Connected to Neon DB
+✓ Connected to Neon DB
+✓ Connected to Neon DB
+Received artwork data: {
+  blockchainId: '1',
+  sellerAddress: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC',
+  ipfsHash: 'QmMock1764237359351',
+  category: 'Painting',
+  tags: 'portrait, oil painting, acrylic style, traditional art, expressive, colorful, serene, abstract background, fine art',
+  name: 'Serenity in Color',
+  description: '“Serenity in Color” is a vibrant oil-style portrait portraying a young woman with closed eyes, captured in a moment of inner calm. The warm, textured red tones of her garment blend harmoniously with the abstract backdrop of blues, greens, and golds. Rich brushstrokes give the piece an expressive, traditional feel while maintaining a modern atmospheric depth. Perfect for collectors who appreciate emotive portraiture and painterly techniques.',
+  price: '0.45'
+}
+✓ Connected to Neon DB
+Artwork created successfully: {
+  id: 3,
+  blockchain_id: 1,
+  seller_address: '0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc',
+  qr_code_url: null,
+  ipfs_metadata_hash: 'QmMock1764237359351',
+  category: 'Painting',
+  tags: [
+    'portrait',
+    'oil painting',
+    'acrylic style',
+    'traditional art',
+    'expressive',
+    'colorful',
+    'serene',
+    'abstract background',
+    'fine art'
+  ],
+  views: 0,
+  created_at: 2025-11-27T04:26:07.169Z,
+  updated_at: 2025-11-27T04:26:07.169Z,
+  name: 'Serenity in Color',
+  description: '“Serenity in Color” is a vibrant oil-style portrait portraying a young woman with closed eyes, captured in a moment of inner calm. The warm, textured red tones of her garment blend harmoniously with the abstract backdrop of blues, greens, and golds. Rich brushstrokes give the piece an expressive, traditional feel while maintaining a modern atmospheric depth. Perfect for collectors who appreciate emotive portraiture and painterly techniques.',
+  price: '0.45',
+  image_urls: [ '/uploads/portfolios/1764237366354-331217031-art6.png' ]
+}
+✓ Connected to Neon DB
+✓ Connected to Neon DB
+✓ Connected to Neon DB
+✓ Connected to Neon DB
+✓ Connected to Neon DB
+✓ Connected to Neon DB
+✓ Connected to Neon DB
+✓ Connected to Neon DB
+✓ Connected to Neon DB
+✓ Connected to Neon DB
+✓ Connected to Neon DB
+✓ Connected to Neon DB
+✓ Connected to Neon DB
+✓ Connected to Neon DB
+✓ Connected to Neon DB

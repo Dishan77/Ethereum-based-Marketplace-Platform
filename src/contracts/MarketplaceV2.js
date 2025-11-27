@@ -1,27 +1,551 @@
-export const MARKETPLACE_V2_ABI = [
-  // Events
-  "event ItemListed(uint256 indexed itemId, address indexed seller, uint256 price, string ipfsHash, uint256 timestamp)",
-  "event ItemSold(uint256 indexed itemId, address indexed buyer, address indexed seller, uint256 price, uint256 timestamp)",
-  "event ItemResold(uint256 indexed itemId, address indexed newSeller, uint256 newPrice, uint256 timestamp)",
-  "event ConditionReported(uint256 indexed itemId, address indexed owner, string conditionHash, uint256 timestamp)",
-  "event ItemTransferred(uint256 indexed itemId, address indexed from, address indexed to, uint256 timestamp)",
-  
-  // Read Functions
-  "function itemCount() public view returns (uint256)",
-  "function items(uint256) public view returns (uint256 id, string name, uint256 price, address seller, address owner, bool isSold, bool isResale, string ipfsMetadataHash, uint256 listedAt)",
-  "function getOwnershipTimeline(uint256 _itemId) public view returns (tuple(address owner, uint256 timestamp, string conditionHash, uint256 price)[] memory)",
-  "function getItemsByOwner(address _owner) public view returns (uint256[] memory)",
-  "function getItemDetails(uint256 _itemId) public view returns (tuple(uint256 id, string name, uint256 price, address seller, address owner, bool isSold, bool isResale, string ipfsMetadataHash, uint256 listedAt), uint256 ownershipCount, address originalSeller)",
-  "function getListedItems() public view returns (uint256[] memory)",
-  
-  // Write Functions
-  "function listItem(string memory _name, uint256 _price, string memory _ipfsMetadataHash) public",
-  "function purchaseItem(uint256 _itemId) public payable",
-  "function resellItem(uint256 _itemId, uint256 _newPrice) public",
-  "function addConditionReport(uint256 _itemId, string memory _conditionHash) public",
-  "function transferItem(uint256 _itemId, address _to) public"
+export const CONTRACT_ADDRESS = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
+
+export const CONTRACT_ABI = [
+  {
+    "type": "function",
+    "name": "addConditionReport",
+    "inputs": [
+      {
+        "name": "_itemId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_conditionHash",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getItemDetails",
+    "inputs": [
+      {
+        "name": "_itemId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "item",
+        "type": "tuple",
+        "internalType": "struct MarketplaceV2.Item",
+        "components": [
+          {
+            "name": "id",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "name",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "price",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "seller",
+            "type": "address",
+            "internalType": "address payable"
+          },
+          {
+            "name": "owner",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "isSold",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "isResale",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "ipfsMetadataHash",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "listedAt",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      },
+      {
+        "name": "ownershipCount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "originalSeller",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getItemsByOwner",
+    "inputs": [
+      {
+        "name": "_owner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getListedItems",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getOwnershipTimeline",
+    "inputs": [
+      {
+        "name": "_itemId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple[]",
+        "internalType": "struct MarketplaceV2.OwnershipRecord[]",
+        "components": [
+          {
+            "name": "owner",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "timestamp",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "conditionHash",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "price",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "itemCount",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "items",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "price",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "seller",
+        "type": "address",
+        "internalType": "address payable"
+      },
+      {
+        "name": "owner",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "isSold",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "isResale",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "ipfsMetadataHash",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "listedAt",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "listItem",
+    "inputs": [
+      {
+        "name": "_name",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "_price",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_ipfsMetadataHash",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "ownedItems",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "ownershipTimeline",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "owner",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "timestamp",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "conditionHash",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "price",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "purchaseItem",
+    "inputs": [
+      {
+        "name": "_itemId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "resellItem",
+    "inputs": [
+      {
+        "name": "_itemId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_newPrice",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "transferItem",
+    "inputs": [
+      {
+        "name": "_itemId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_newOwner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "ConditionReported",
+    "inputs": [
+      {
+        "name": "itemId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "owner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "conditionHash",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "timestamp",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ItemListed",
+    "inputs": [
+      {
+        "name": "itemId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "seller",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "price",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "ipfsHash",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "timestamp",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ItemResold",
+    "inputs": [
+      {
+        "name": "itemId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "newSeller",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "newPrice",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "timestamp",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ItemSold",
+    "inputs": [
+      {
+        "name": "itemId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "buyer",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "seller",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "price",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "timestamp",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ItemTransferred",
+    "inputs": [
+      {
+        "name": "itemId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "from",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "to",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "timestamp",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  }
 ];
 
-export const CONTRACT_ADDRESS = process.env.REACT_APP_CONTRACT_ADDRESS || "0x5FbDB2315678afecb367f032d93F642f64180aa3";
-export const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:3001";
-export const LOCAL_CHAIN_ID = 31337;
+// Export MARKETPLACE_V2_ABI as alias for CONTRACT_ABI for backward compatibility
+export const MARKETPLACE_V2_ABI = CONTRACT_ABI;
+
+// Backend URL configuration
+export const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3001';

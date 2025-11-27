@@ -78,12 +78,19 @@ const AdminDashboard = () => {
   const fetchAllArtworks = async () => {
     try {
       const response = await axios.get(`${BACKEND_URL}/api/artworks`);
-      setAllArtworks(response.data);
+      
+      // Convert prices from Wei to ETH
+      const artworksWithETH = response.data.map(artwork => ({
+        ...artwork,
+        price: artwork.price ? ethers.formatEther(artwork.price) : '0'
+      }));
+      
+      setAllArtworks(artworksWithETH);
       
       setStatistics(prev => ({
         ...prev,
-        totalArtworks: response.data.length,
-        activeSales: response.data.filter(a => !a.is_sold).length
+        totalArtworks: artworksWithETH.length,
+        activeSales: artworksWithETH.filter(a => !a.is_sold).length
       }));
     } catch (error) {
       console.error('Error fetching all artworks:', error);
