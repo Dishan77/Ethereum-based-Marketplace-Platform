@@ -14,3 +14,4 @@ Contract address: 0x5FbDB2315678afecb367f032d93F642f64180aa3
 Environment: development
 Health check: http://localhost:3001/health
 
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
