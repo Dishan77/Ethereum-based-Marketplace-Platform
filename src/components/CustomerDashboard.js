@@ -3,9 +3,12 @@ import { ethers } from 'ethers';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { MARKETPLACE_V2_ABI, CONTRACT_ADDRESS, BACKEND_URL } from '../contracts/MarketplaceV2';
+import { useNavigate } from 'react-router-dom';
+import ArtistProfile from './ArtistProfile';
 
 const CustomerDashboard = () => {
   const { user, signer, account } = useAuth();
+  const navigate = useNavigate();
   const [artworks, setArtworks] = useState([]);
   const [filteredArtworks, setFilteredArtworks] = useState([]);
   const [myPurchases, setMyPurchases] = useState([]);
@@ -15,6 +18,7 @@ const CustomerDashboard = () => {
   const [selectedHistory, setSelectedHistory] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedArtist, setSelectedArtist] = useState(null);
 
   useEffect(() => {
     fetchArtworks();
@@ -87,6 +91,7 @@ const CustomerDashboard = () => {
           const [itemData, ownershipCount, originalSeller] = await contract.getItemDetails(id);
           return {
             id: Number(id),
+            blockchain_id: Number(id),
             name: itemData.name,
             price: ethers.formatEther(itemData.price),
             seller: itemData.seller,
@@ -366,12 +371,16 @@ const CustomerDashboard = () => {
                   >
                     {/* Artwork Image */}
                     {firstImage && (
-                      <div style={{ 
-                        width: '100%', 
-                        height: '240px', 
-                        backgroundColor: '#f5f5f5',
-                        position: 'relative'
-                      }}>
+                      <div 
+                        style={{ 
+                          width: '100%', 
+                          height: '240px', 
+                          backgroundColor: '#f5f5f5',
+                          position: 'relative',
+                          cursor: 'pointer'
+                        }}
+                        onClick={() => navigate(`/artwork/${artwork.blockchain_id}`)}
+                      >
                         <img
                           src={`${BACKEND_URL}${firstImage}`}
                           alt={artwork.name}
@@ -405,14 +414,18 @@ const CustomerDashboard = () => {
 
                     <div style={{ padding: '16px' }}>
                       {/* Title */}
-                      <h3 style={{ 
-                        margin: '0 0 8px 0', 
-                        fontSize: '20px',
-                        color: '#333',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                      }}>
+                      <h3 
+                        style={{ 
+                          margin: '0 0 8px 0', 
+                          fontSize: '20px',
+                          color: '#333',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          cursor: 'pointer'
+                        }}
+                        onClick={() => navigate(`/artwork/${artwork.blockchain_id}`)}
+                      >
                         {artwork.name || `Artwork #${artwork.blockchain_id}`}
                       </h3>
 
@@ -422,7 +435,20 @@ const CustomerDashboard = () => {
                         color: '#666',
                         fontSize: '14px'
                       }}>
-                        <strong>Artist:</strong> {artwork.seller_address?.substring(0, 8)}...{artwork.seller_address?.substring(38)}
+                        <strong>Artist: </strong> 
+                        <span 
+                          style={{ 
+                            color: '#007bff', 
+                            cursor: 'pointer', 
+                            textDecoration: 'underline' 
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedArtist(artwork.seller_address);
+                          }}
+                        >
+                          {artwork.artistName || 'Unknown'}
+                        </span>
                       </p>
 
                       {/* Description */}
@@ -456,31 +482,6 @@ const CustomerDashboard = () => {
                           {artwork.category || 'Uncategorized'}
                         </span>
                       </div>
-
-                      {/* Tags */}
-                      {artwork.tags && artwork.tags.length > 0 && (
-                        <div style={{ 
-                          display: 'flex', 
-                          flexWrap: 'wrap', 
-                          gap: '6px',
-                          marginBottom: '12px'
-                        }}>
-                          {artwork.tags.slice(0, 3).map((tag, index) => (
-                            <span
-                              key={index}
-                              style={{
-                                backgroundColor: '#f5f5f5',
-                                color: '#666',
-                                padding: '3px 8px',
-                                borderRadius: '3px',
-                                fontSize: '11px'
-                              }}
-                            >
-                              #{tag.trim()}
-                            </span>
-                          ))}
-                        </div>
-                      )}
 
                       {/* Price */}
                       <div style={{ 

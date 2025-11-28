@@ -14,8 +14,21 @@ const ArtistProfile = ({ walletAddress, isAdminView = false, onClose }) => {
       setLoading(true);
       
       // Fetch artist profile
-      const profileResponse = await fetch(`http://localhost:3001/api/users/profile/${walletAddress}`);
-      const profileData = await profileResponse.json();
+      let profileData;
+      try {
+        // Try to fetch detailed artist profile first
+        const response = await fetch(`http://localhost:3001/api/users/artist-profile/${walletAddress}`);
+        if (response.ok) {
+          profileData = await response.json();
+        } else {
+          throw new Error('Artist profile not found');
+        }
+      } catch (err) {
+        // Fallback to basic user profile
+        const response = await fetch(`http://localhost:3001/api/users/profile/${walletAddress}`);
+        profileData = await response.json();
+      }
+      
       setArtist(profileData);
 
       // Fetch artist's artworks
@@ -51,10 +64,37 @@ const ArtistProfile = ({ walletAddress, isAdminView = false, onClose }) => {
     );
   }
 
-  const stats = {
-    total: artworks.length,
-    sold: artworks.filter(a => a.is_sold).length,
-    available: artworks.filter(a => !a.is_sold).length
+  const renderPortfolioImages = () => {
+    if (!artist.portfolio_images) return null;
+    
+    let images = [];
+    try {
+      images = typeof artist.portfolio_images === 'string' 
+        ? JSON.parse(artist.portfolio_images) 
+        : artist.portfolio_images;
+    } catch (e) {
+      console.error('Error parsing portfolio images:', e);
+      return null;
+    }
+
+    if (!images || images.length === 0) return null;
+
+    return (
+      <div style={styles.section}>
+        <h3 style={styles.sectionTitle}>Portfolio Images</h3>
+        <div style={styles.artworksGrid}>
+          {images.map((img, index) => (
+            <div key={index} style={styles.artworkCard}>
+              <img 
+                src={`http://localhost:3001${img}`} 
+                alt={`Portfolio ${index + 1}`}
+                style={styles.artworkImage}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -64,10 +104,10 @@ const ArtistProfile = ({ walletAddress, isAdminView = false, onClose }) => {
         
         <div style={styles.header}>
           <div style={styles.avatar}>
-            {artist.name.charAt(0).toUpperCase()}
+            {(artist.artist_name || artist.name || '?').charAt(0).toUpperCase()}
           </div>
           <div style={styles.headerInfo}>
-            <h2 style={styles.name}>{artist.name}</h2>
+            <h2 style={styles.name}>{artist.artist_name || artist.name || 'Unnamed Artist'}</h2>
             <p style={styles.wallet}>
               {isAdminView ? walletAddress : `${walletAddress.substring(0, 6)}...${walletAddress.substring(38)}`}
             </p>
@@ -77,78 +117,105 @@ const ArtistProfile = ({ walletAddress, isAdminView = false, onClose }) => {
           </div>
         </div>
 
+        <div style={styles.adminSection}>
+          <h3 style={styles.sectionTitle}>Registration Details</h3>
+          <div style={styles.adminGrid}>
+            <div>
+              <strong>Full Wallet:</strong>
+              <p style={styles.adminValue}>{walletAddress}</p>
+            </div>
+            <div>
+              <strong>Date of Birth:</strong>
+              <p style={styles.adminValue}>
+                {artist.date_of_birth ? new Date(artist.date_of_birth).toLocaleDateString() : 'N/A'}
+              </p>
+            </div>
+            <div>
+              <strong>Email:</strong>
+              <p style={styles.adminValue}>{artist.email || 'N/A'}</p>
+            </div>
+            <div>
+              <strong>Phone:</strong>
+              <p style={styles.adminValue}>{artist.phone || 'N/A'}</p>
+            </div>
+            <div>
+              <strong>Location:</strong>
+              <p style={styles.adminValue}>
+                {[artist.city, artist.country].filter(Boolean).join(', ') || 'N/A'}
+              </p>
+            </div>
+            <div>
+              <strong>Address:</strong>
+              <p style={styles.adminValue}>{artist.address || 'N/A'}</p>
+            </div>
+            <div>
+              <strong>Experience:</strong>
+              <p style={styles.adminValue}>{artist.experience || 'N/A'}</p>
+            </div>
+            <div>
+              <strong>Education:</strong>
+              <p style={styles.adminValue}>{artist.education || 'N/A'}</p>
+            </div>
+            <div>
+              <strong>Expertise:</strong>
+              <p style={styles.adminValue}>{artist.expertise || 'N/A'}</p>
+            </div>
+            <div>
+              <strong>Certifications:</strong>
+              <p style={styles.adminValue}>{artist.certifications || 'N/A'}</p>
+            </div>
+            <div>
+              <strong>Website:</strong>
+              <p style={styles.adminValue}>
+                {artist.website ? (
+                  <a href={artist.website} target="_blank" rel="noopener noreferrer">{artist.website}</a>
+                ) : 'N/A'}
+              </p>
+            </div>
+          </div>
+          
+          {artist.art_styles && (
+            <div style={{marginTop: '15px'}}>
+              <strong>Art Styles:</strong>
+              <div style={{display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '5px'}}>
+                {(typeof artist.art_styles === 'string' ? JSON.parse(artist.art_styles) : artist.art_styles).map((style, idx) => (
+                  <span key={idx} style={{
+                    backgroundColor: '#e2e8f0',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    fontSize: '12px'
+                  }}>
+                    {style}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {artist.social_media && (
+            <div style={{marginTop: '15px'}}>
+              <strong>Social Media:</strong>
+              <div style={{display: 'flex', gap: '15px', marginTop: '5px'}}>
+                {Object.entries(typeof artist.social_media === 'string' ? JSON.parse(artist.social_media) : artist.social_media).map(([platform, handle]) => (
+                  handle && (
+                    <span key={platform} style={styles.adminValue}>
+                      {platform}: {handle}
+                    </span>
+                  )
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
         {artist.bio && (
           <div style={styles.section}>
-            <h3 style={styles.sectionTitle}>About</h3>
+            <h3 style={styles.sectionTitle}>Bio</h3>
             <p style={styles.bio}>{artist.bio}</p>
           </div>
         )}
 
-        <div style={styles.statsGrid}>
-          <div style={styles.statCard}>
-            <div style={styles.statValue}>{stats.total}</div>
-            <div style={styles.statLabel}>Total Artworks</div>
-          </div>
-          <div style={styles.statCard}>
-            <div style={styles.statValue}>{stats.sold}</div>
-            <div style={styles.statLabel}>Sold</div>
-          </div>
-          <div style={styles.statCard}>
-            <div style={styles.statValue}>{stats.available}</div>
-            <div style={styles.statLabel}>Available</div>
-          </div>
-        </div>
-
-        {isAdminView && (
-          <div style={styles.adminSection}>
-            <h3 style={styles.sectionTitle}>Admin Information</h3>
-            <div style={styles.adminGrid}>
-              <div>
-                <strong>Full Wallet:</strong>
-                <p style={styles.adminValue}>{walletAddress}</p>
-              </div>
-              <div>
-                <strong>Role:</strong>
-                <p style={styles.adminValue}>{artist.role}</p>
-              </div>
-              <div>
-                <strong>Account Created:</strong>
-                <p style={styles.adminValue}>
-                  {new Date(artist.created_at).toLocaleDateString()}
-                </p>
-              </div>
-              <div>
-                <strong>Profile Submission:</strong>
-                <p style={styles.adminValue}>
-                  {artist.profile_submitted_at 
-                    ? new Date(artist.profile_submitted_at).toLocaleDateString()
-                    : 'Not submitted'}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div style={styles.section}>
-          <h3 style={styles.sectionTitle}>Artworks ({artworks.length})</h3>
-          <div style={styles.artworksGrid}>
-            {artworks.slice(0, 6).map((artwork) => (
-              <div key={artwork.id} style={styles.artworkCard}>
-                <img 
-                  src={artwork.ipfs_hash} 
-                  alt={artwork.name}
-                  style={styles.artworkImage}
-                />
-                <p style={styles.artworkName}>{artwork.name}</p>
-                <p style={styles.artworkPrice}>{artwork.price} ETH</p>
-                {artwork.is_sold && <span style={styles.soldBadge}>Sold</span>}
-              </div>
-            ))}
-          </div>
-          {artworks.length > 6 && (
-            <p style={styles.moreText}>And {artworks.length - 6} more...</p>
-          )}
-        </div>
+        {renderPortfolioImages()}
       </div>
     </div>
   );

@@ -196,12 +196,13 @@ router.post('/artist-registration', authenticateToken, upload.array('portfolioIm
       // Insert or update artist profile
       await client.query(
         `INSERT INTO artist_profiles (
-          wallet_address, date_of_birth, expertise, experience, education,
+          wallet_address, artist_name, date_of_birth, expertise, experience, education,
           phone, email, address, city, country, website, social_media,
           art_styles, certifications, portfolio_images
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
         ON CONFLICT (wallet_address) 
         DO UPDATE SET 
+          artist_name = EXCLUDED.artist_name,
           date_of_birth = EXCLUDED.date_of_birth,
           expertise = EXCLUDED.expertise,
           experience = EXCLUDED.experience,
@@ -219,6 +220,7 @@ router.post('/artist-registration', authenticateToken, upload.array('portfolioIm
           updated_at = CURRENT_TIMESTAMP`,
         [
           walletAddress,
+          name, // Use the name from the form as artist_name
           dateOfBirth,
           expertise,
           experience,

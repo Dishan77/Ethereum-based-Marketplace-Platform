@@ -33,10 +33,11 @@ const ResaleModal = ({ item, signer, onClose, onSuccess }) => {
       setSubmitting(true);
 
       // Create condition report data
+      const reporterAddress = await signer.getAddress();
       const reportData = {
         artworkId: item.id,
         blockchainId: item.blockchain_id,
-        reporterAddress: window.ethereum.selectedAddress,
+        reporterAddress: reporterAddress,
         overallCondition: conditionReport.overallCondition,
         physicalCondition: conditionReport.physicalCondition,
         authenticityNotes: conditionReport.authenticityNotes,
@@ -61,12 +62,13 @@ const ResaleModal = ({ item, signer, onClose, onSuccess }) => {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify(reportData)
+          body: JSON.stringify({ ...reportData, reportHash })
         }
       );
 
       if (!reportResponse.ok) {
-        throw new Error('Failed to save condition report');
+        const errorData = await reportResponse.json();
+        throw new Error(errorData.error || 'Failed to save condition report');
       }
 
       // Resell on blockchain
@@ -127,73 +129,88 @@ const ResaleModal = ({ item, signer, onClose, onSuccess }) => {
               required
             >
               <option value="">Select overall condition</option>
-              <option value="excellent">Excellent - Like new</option>
-              <option value="very_good">Very Good - Minimal wear</option>
-              <option value="good">Good - Some visible wear</option>
-              <option value="fair">Fair - Noticeable wear or damage</option>
-              <option value="poor">Poor - Significant damage</option>
+              <option value="Excellent">Excellent - Like new</option>
+              <option value="Very Good">Very Good - Minimal wear</option>
+              <option value="Good">Good - Some visible wear</option>
+              <option value="Fair">Fair - Noticeable wear or damage</option>
+              <option value="Poor">Poor - Significant damage</option>
             </select>
           </div>
 
           <div style={styles.section}>
-            <label style={styles.label}>Physical Condition Details *</label>
-            <textarea
+            <label style={styles.label}>Physical Condition *</label>
+            <select
               value={conditionReport.physicalCondition}
               onChange={(e) => setConditionReport({
                 ...conditionReport,
                 physicalCondition: e.target.value
               })}
-              style={styles.textarea}
-              placeholder="Describe any wear, scratches, fading, or damage in detail..."
-              rows="4"
+              style={styles.select}
               required
-            />
+            >
+              <option value="">Select physical condition</option>
+              <option value="No Defects">No Defects</option>
+              <option value="Minor Defects">Minor Defects (scratches, fading)</option>
+              <option value="Noticeable Defects">Noticeable Defects</option>
+              <option value="Significant Damage">Significant Damage</option>
+            </select>
           </div>
 
           <div style={styles.section}>
             <label style={styles.label}>Authenticity & Provenance</label>
-            <textarea
+            <select
               value={conditionReport.authenticityNotes}
               onChange={(e) => setConditionReport({
                 ...conditionReport,
                 authenticityNotes: e.target.value
               })}
-              style={styles.textarea}
-              placeholder="Certificates of authenticity, previous ownership, exhibition history..."
-              rows="3"
-            />
+              style={styles.select}
+            >
+              <option value="">Select authenticity</option>
+              <option value="Certificate of Authenticity">Certificate of Authenticity Available</option>
+              <option value="Signed by Artist">Signed by Artist</option>
+              <option value="Gallery Receipt">Gallery Receipt</option>
+              <option value="None">None</option>
+            </select>
           </div>
 
           <div style={styles.section}>
             <label style={styles.label}>Restoration History</label>
-            <textarea
+            <select
               value={conditionReport.restorationHistory}
               onChange={(e) => setConditionReport({
                 ...conditionReport,
                 restorationHistory: e.target.value
               })}
-              style={styles.textarea}
-              placeholder="Any repairs, cleaning, or restoration work performed..."
-              rows="3"
-            />
+              style={styles.select}
+            >
+              <option value="">Select restoration history</option>
+              <option value="None">None</option>
+              <option value="Minor Restoration">Minor Restoration</option>
+              <option value="Major Restoration">Major Restoration</option>
+            </select>
           </div>
 
           <div style={styles.section}>
-            <label style={styles.label}>Storage & Care History</label>
-            <textarea
+            <label style={styles.label}>Storage Conditions</label>
+            <select
               value={conditionReport.storageConditions}
               onChange={(e) => setConditionReport({
                 ...conditionReport,
                 storageConditions: e.target.value
               })}
-              style={styles.textarea}
-              placeholder="How the artwork has been stored, climate control, display conditions..."
-              rows="3"
-            />
+              style={styles.select}
+            >
+              <option value="">Select storage conditions</option>
+              <option value="Climate Controlled">Climate Controlled</option>
+              <option value="Standard Room">Standard Room</option>
+              <option value="Attic/Basement">Attic/Basement</option>
+              <option value="Other">Other</option>
+            </select>
           </div>
 
           <div style={styles.section}>
-            <label style={styles.label}>Additional Notes</label>
+            <label style={styles.label}>Additional Notes (Optional)</label>
             <textarea
               value={conditionReport.additionalNotes}
               onChange={(e) => setConditionReport({
@@ -201,7 +218,7 @@ const ResaleModal = ({ item, signer, onClose, onSuccess }) => {
                 additionalNotes: e.target.value
               })}
               style={styles.textarea}
-              placeholder="Any other relevant information about the artwork's condition..."
+              placeholder="Any other relevant information or specific details about the artwork's condition..."
               rows="3"
             />
           </div>

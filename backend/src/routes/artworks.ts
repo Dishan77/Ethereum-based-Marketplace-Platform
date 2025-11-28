@@ -21,9 +21,16 @@ router.get('/', async (req: AuthRequest, res: Response) => {
         
         // Get artwork from database
         const dbResult = await pool.query(
-          'SELECT * FROM artworks WHERE blockchain_id = $1',
+          `SELECT a.*, ap.artist_name, u.name as user_name 
+           FROM artworks a 
+           LEFT JOIN artist_profiles ap ON a.seller_address = ap.wallet_address
+           LEFT JOIN users u ON a.seller_address = u.wallet_address
+           WHERE a.blockchain_id = $1`,
           [Number(itemId)]
         );
+
+        const artworkData = dbResult.rows[0];
+        const artistName = artworkData?.artist_name || artworkData?.user_name || 'Unknown Artist';
 
         return {
           blockchainId: Number(itemId),
@@ -34,7 +41,8 @@ router.get('/', async (req: AuthRequest, res: Response) => {
           isResale: itemDetails[0].isResale,
           listedAt: Number(itemDetails[0].listedAt),
           ownershipCount: Number(itemDetails[1]),
-          ...dbResult.rows[0]
+          artistName,
+          ...artworkData
         };
       })
     );
@@ -59,7 +67,11 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
     
     // Get from database
     const dbResult = await pool.query(
-      'SELECT * FROM artworks WHERE blockchain_id = $1',
+      `SELECT a.*, ap.artist_name, u.name as user_name 
+       FROM artworks a 
+       LEFT JOIN artist_profiles ap ON a.seller_address = ap.wallet_address
+       LEFT JOIN users u ON a.seller_address = u.wallet_address
+       WHERE a.blockchain_id = $1`,
       [id]
     );
 
@@ -73,6 +85,9 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
       'UPDATE artworks SET views = views + 1 WHERE blockchain_id = $1',
       [id]
     );
+
+    const artworkData = dbResult.rows[0];
+    const artistName = artworkData?.artist_name || artworkData?.user_name || 'Unknown Artist';
 
     res.json({
       blockchainId: Number(id),
@@ -91,7 +106,8 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
         conditionHash: record.conditionHash,
         price: record.price.toString()
       })),
-      ...dbResult.rows[0]
+      artistName,
+      ...artworkData
     });
   } catch (error) {
     console.error('Get artwork error:', error);

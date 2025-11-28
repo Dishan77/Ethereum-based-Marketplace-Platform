@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import SellerDashboard from "./components/SellerDashboard";
 import CustomerDashboard from "./components/CustomerDashboard";
 import AdminDashboard from "./components/AdminDashboard";
+import ArtworkDetail from "./components/ArtworkDetail";
 import "./App.css";
 
 // Protected Route Component
@@ -338,6 +339,15 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['customer', 'seller', 'admin']}>
                 <CustomerDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/artwork/:id"
+            element={
+              <ProtectedRoute allowedRoles={['customer', 'seller', 'admin']}>
+                <ArtworkDetail />
               </ProtectedRoute>
             }
           />

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ethers } from 'ethers';
 import { MARKETPLACE_V2_ABI } from '../contracts/MarketplaceV2';
 import ArtistProfile from './ArtistProfile';
+import { BACKEND_URL } from '../contracts/MarketplaceV2';
 
 const CONTRACT_ADDRESS = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
 
@@ -16,6 +17,7 @@ const ArtworkDetail = () => {
   const [showArtistProfile, setShowArtistProfile] = useState(false);
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const signer = window.ethereum ? new ethers.BrowserProvider(window.ethereum).getSigner() : null;
 
@@ -58,7 +60,7 @@ const ArtworkDetail = () => {
           const historyData = timeline.map((record, index) => ({
             owner: record[0],
             timestamp: Number(record[1]),
-            price: ethers.formatEther(record[2]),
+            price: ethers.formatEther(record[3]),
             index: index
           }));
           setOwnershipHistory(historyData.reverse());
@@ -71,7 +73,7 @@ const ArtworkDetail = () => {
           `http://localhost:3001/api/artworks?category=${encodeURIComponent(dbData.category)}&limit=4`
         );
         const similarData = await similarResponse.json();
-        setSimilarArtworks(similarData.filter(a => a.id !== parseInt(id)));
+        setSimilarArtworks(similarData.filter(a => a.blockchain_id !== parseInt(id)));
       }
 
       setLoading(false);
@@ -103,441 +105,204 @@ const ArtworkDetail = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div style={styles.container}>
-        <p>Loading artwork details...</p>
-      </div>
-    );
-  }
+  if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading artwork details...</div>;
+  if (!artwork) return <div style={{ padding: '40px', textAlign: 'center' }}>Artwork not found</div>;
 
-  if (!artwork) {
-    return (
-      <div style={styles.container}>
-        <p>Artwork not found</p>
-        <button onClick={() => navigate(-1)} style={styles.backButton}>Go Back</button>
-      </div>
-    );
-  }
-
-  const currentUserAddress = window.ethereum?.selectedAddress?.toLowerCase();
-  const isOwner = blockchainData && currentUserAddress === blockchainData.currentOwner.toLowerCase();
+  const imageUrls = Array.isArray(artwork.image_urls) 
+    ? artwork.image_urls 
+    : (artwork.image_urls && typeof artwork.image_urls === 'string' 
+        ? JSON.parse(artwork.image_urls) 
+        : []);
 
   return (
-    <div style={styles.container}>
-      <button onClick={() => navigate(-1)} style={styles.backButton}>← Back</button>
+    <div style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto' }}>
+      <button 
+        onClick={() => navigate(-1)}
+        style={{ marginBottom: '20px', background: 'none', border: 'none', cursor: 'pointer', color: '#666' }}
+      >
+        ← Back to Marketplace
+      </button>
 
-      <div style={styles.contentGrid}>
-        {/* Left Column - Images */}
-        <div style={styles.imageSection}>
-          <img 
-            src={artwork.ipfs_hash} 
-            alt={artwork.name}
-            style={styles.mainImage}
-          />
-          {artwork.additional_images && artwork.additional_images.length > 0 && (
-            <div style={styles.additionalImages}>
-              {artwork.additional_images.map((img, index) => (
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px' }}>
+        {/* Left Column: Images */}
+        <div>
+          <div style={{ 
+            width: '100%', 
+            height: '500px', 
+            backgroundColor: '#f5f5f5', 
+            borderRadius: '12px',
+            overflow: 'hidden',
+            marginBottom: '20px',
+            position: 'relative'
+          }}>
+            {imageUrls.length > 0 ? (
+              <>
                 <img 
-                  key={index}
-                  src={img} 
-                  alt={`${artwork.name} - view ${index + 1}`}
-                  style={styles.thumbnail}
+                  src={`${BACKEND_URL}${imageUrls[currentImageIndex]}`} 
+                  alt={artwork.name}
+                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                />
+                {imageUrls.length > 1 && (
+                  <>
+                    <button 
+                      onClick={() => setCurrentImageIndex(prev => prev === 0 ? imageUrls.length - 1 : prev - 1)}
+                      style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.8)', border: 'none', borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer' }}
+                    >
+                      ←
+                    </button>
+                    <button 
+                      onClick={() => setCurrentImageIndex(prev => prev === imageUrls.length - 1 ? 0 : prev + 1)}
+                      style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.8)', border: 'none', borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer' }}
+                    >
+                      →
+                    </button>
+                  </>
+                )}
+              </>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#999', fontSize: '64px' }}>🎨</div>
+            )}
+          </div>
+          
+          {/* Thumbnails */}
+          {imageUrls.length > 1 && (
+            <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '10px' }}>
+              {imageUrls.map((url, idx) => (
+                <img 
+                  key={idx}
+                  src={`${BACKEND_URL}${url}`}
+                  alt={`Thumbnail ${idx + 1}`}
+                  style={{ 
+                    width: '80px', 
+                    height: '80px', 
+                    objectFit: 'cover', 
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    border: currentImageIndex === idx ? '2px solid #667eea' : '2px solid transparent'
+                  }}
+                  onClick={() => setCurrentImageIndex(idx)}
                 />
               ))}
             </div>
           )}
         </div>
 
-        {/* Right Column - Details */}
-        <div style={styles.detailsSection}>
-          <h1 style={styles.title}>{artwork.name}</h1>
-          <p style={styles.price}>{artwork.price} ETH</p>
+        {/* Right Column: Details */}
+        <div>
+          <h1 style={{ fontSize: '36px', marginBottom: '10px', color: '#2d3748' }}>{artwork.name}</h1>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '20px' }}>
+            <span style={{ backgroundColor: '#edf2f7', padding: '6px 12px', borderRadius: '20px', color: '#4a5568', fontSize: '14px' }}>
+              {artwork.category}
+            </span>
+            {blockchainData?.isSold && (
+              <span style={{ backgroundColor: '#fed7d7', color: '#c53030', padding: '6px 12px', borderRadius: '20px', fontSize: '14px', fontWeight: 'bold' }}>
+                Sold
+              </span>
+            )}
+          </div>
 
-          {blockchainData?.isResale && (
-            <span style={styles.resaleBadge}>RESALE</span>
-          )}
-
-          <div style={styles.artistCard}>
-            <h3 style={styles.sectionTitle}>Artist</h3>
-            <p 
-              style={styles.artistName}
-              onClick={() => setShowArtistProfile(true)}
-            >
-              {artwork.seller_name || 'Unknown Artist'}
-              {artwork.verification_status === 'verified' && (
-                <span style={styles.verifiedBadge}> ✓</span>
-              )}
+          <div style={{ marginBottom: '30px' }}>
+            <h3 style={{ fontSize: '18px', color: '#718096', marginBottom: '5px' }}>Price</h3>
+            <p style={{ fontSize: '32px', fontWeight: 'bold', color: '#667eea', margin: 0 }}>
+              {blockchainData?.price || artwork.price} ETH
             </p>
           </div>
 
-          <div style={styles.section}>
-            <h3 style={styles.sectionTitle}>Description</h3>
-            <p style={styles.description}>{artwork.description}</p>
+          <div style={{ marginBottom: '30px' }}>
+            <h3 style={{ fontSize: '18px', color: '#2d3748', marginBottom: '10px' }}>Description</h3>
+            <p style={{ color: '#4a5568', lineHeight: '1.6' }}>{artwork.description}</p>
           </div>
 
-          <div style={styles.section}>
-            <h3 style={styles.sectionTitle}>Details</h3>
-            <div style={styles.detailsGrid}>
-              <div style={styles.detailItem}>
-                <strong>Category:</strong> {artwork.category}
+          <div style={{ marginBottom: '30px', padding: '20px', backgroundColor: '#f7fafc', borderRadius: '12px' }}>
+            <h3 style={{ fontSize: '18px', color: '#2d3748', marginBottom: '15px' }}>Artist</h3>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <p style={{ fontWeight: 'bold', fontSize: '18px', margin: '0 0 5px 0' }}>
+                  {artwork.artist_name || 'Unknown Artist'}
+                </p>
+                <p style={{ color: '#718096', fontSize: '14px', margin: 0 }}>
+                  {artwork.seller_address}
+                </p>
               </div>
-              <div style={styles.detailItem}>
-                <strong>Medium:</strong> {artwork.medium || 'N/A'}
-              </div>
-              <div style={styles.detailItem}>
-                <strong>Dimensions:</strong> {artwork.dimensions || 'N/A'}
-              </div>
-              {blockchainData && (
-                <div style={styles.detailItem}>
-                  <strong>Ownership Count:</strong> {blockchainData.ownershipCount}
-                </div>
-              )}
+              <button 
+                onClick={() => setShowArtistProfile(true)}
+                style={{ padding: '8px 16px', backgroundColor: 'white', border: '1px solid #cbd5e0', borderRadius: '6px', cursor: 'pointer', color: '#4a5568' }}
+              >
+                View Profile
+              </button>
             </div>
           </div>
 
-          {artwork.tags && artwork.tags.length > 0 && (
-            <div style={styles.section}>
-              <h3 style={styles.sectionTitle}>Tags</h3>
-              <div style={styles.tagsContainer}>
-                {artwork.tags.map((tag, index) => (
-                  <span key={index} style={styles.tag}>{tag}</span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {isOwner && (
-            <div style={styles.ownerBadge}>
-              You own this artwork
-            </div>
-          )}
-
-          {!artwork.is_sold && !isOwner && signer && (
-            <button 
+          {!blockchainData?.isSold && (
+            <button
               onClick={handlePurchase}
               disabled={purchasing}
-              style={styles.purchaseButton}
+              style={{
+                width: '100%',
+                padding: '15px',
+                backgroundColor: '#667eea',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '18px',
+                fontWeight: 'bold',
+                cursor: purchasing ? 'not-allowed' : 'pointer',
+                opacity: purchasing ? 0.7 : 1
+              }}
             >
-              {purchasing ? 'Purchasing...' : 'Purchase Now'}
+              {purchasing ? 'Processing...' : 'Purchase Artwork'}
             </button>
-          )}
-
-          {artwork.is_sold && !isOwner && (
-            <div style={styles.soldBadge}>
-              This artwork has been sold
-            </div>
           )}
         </div>
       </div>
 
-      {/* Ownership History */}
-      {ownershipHistory.length > 0 && (
-        <div style={styles.historySection}>
-          <h2 style={styles.sectionTitle}>Ownership History</h2>
-          <div style={styles.timeline}>
-            {ownershipHistory.map((record, index) => (
-              <div key={index} style={styles.timelineItem}>
-                <div style={styles.timelineDot}></div>
-                <div style={styles.timelineContent}>
-                  <p style={styles.timelineOwner}>
-                    Owner: {record.owner.substring(0, 6)}...{record.owner.substring(38)}
-                  </p>
-                  <p style={styles.timelineDate}>
-                    {new Date(record.timestamp * 1000).toLocaleString()}
-                  </p>
-                  <p style={styles.timelinePrice}>Price: {record.price} ETH</p>
-                  {record.conditionReport && (
-                    <span style={styles.conditionIndicator}>📋 Condition Report Available</span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Similar Artworks */}
       {similarArtworks.length > 0 && (
-        <div style={styles.similarSection}>
-          <h2 style={styles.sectionTitle}>Similar Artworks</h2>
-          <div style={styles.similarGrid}>
-            {similarArtworks.map((item) => (
-              <div 
-                key={item.id} 
-                style={styles.similarCard}
-                onClick={() => navigate(`/artwork/${item.id}`)}
-              >
-                <img 
-                  src={item.ipfs_hash} 
-                  alt={item.name}
-                  style={styles.similarImage}
-                />
-                <p style={styles.similarName}>{item.name}</p>
-                <p style={styles.similarPrice}>{item.price} ETH</p>
-                {item.seller_name && (
-                  <p style={styles.similarArtist}>by {item.seller_name}</p>
-                )}
-              </div>
-            ))}
+        <div style={{ marginTop: '60px' }}>
+          <h2 style={{ fontSize: '24px', marginBottom: '20px', color: '#2d3748' }}>Similar Artworks</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '20px' }}>
+            {similarArtworks.map(similar => {
+               const simImages = Array.isArray(similar.image_urls) 
+               ? similar.image_urls 
+               : (similar.image_urls && typeof similar.image_urls === 'string' 
+                   ? JSON.parse(similar.image_urls) 
+                   : []);
+              return (
+                <div 
+                  key={similar.id} 
+                  onClick={() => navigate(`/artwork/${similar.blockchain_id}`)}
+                  style={{ border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden', cursor: 'pointer' }}
+                >
+                  <div style={{ height: '200px', backgroundColor: '#f5f5f5' }}>
+                    {simImages[0] && (
+                      <img 
+                        src={`${BACKEND_URL}${simImages[0]}`} 
+                        alt={similar.name}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    )}
+                  </div>
+                  <div style={{ padding: '15px' }}>
+                    <h3 style={{ margin: '0 0 5px 0', fontSize: '16px' }}>{similar.name}</h3>
+                    <p style={{ color: '#667eea', fontWeight: 'bold', margin: 0 }}>{similar.price} ETH</p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* Artist Profile Modal */}
       {showArtistProfile && (
         <ArtistProfile 
-          walletAddress={artwork.seller_address}
-          isAdminView={false}
-          onClose={() => setShowArtistProfile(false)}
+          walletAddress={artwork.seller_address} 
+          isAdminView={false} 
+          onClose={() => setShowArtistProfile(false)} 
         />
       )}
     </div>
   );
-};
-
-const styles = {
-  container: {
-    maxWidth: '1400px',
-    margin: '0 auto',
-    padding: '30px',
-  },
-  backButton: {
-    backgroundColor: '#718096',
-    color: 'white',
-    border: 'none',
-    padding: '10px 20px',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    marginBottom: '20px',
-  },
-  contentGrid: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '40px',
-    marginBottom: '40px',
-  },
-  imageSection: {
-    position: 'sticky',
-    top: '20px',
-    height: 'fit-content',
-  },
-  mainImage: {
-    width: '100%',
-    borderRadius: '12px',
-    marginBottom: '15px',
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-  },
-  additionalImages: {
-    display: 'flex',
-    gap: '10px',
-    overflowX: 'auto',
-  },
-  thumbnail: {
-    width: '100px',
-    height: '100px',
-    objectFit: 'cover',
-    borderRadius: '8px',
-    cursor: 'pointer',
-  },
-  detailsSection: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '25px',
-  },
-  title: {
-    fontSize: '36px',
-    fontWeight: 'bold',
-    color: '#2d3748',
-    margin: 0,
-  },
-  price: {
-    fontSize: '28px',
-    fontWeight: 'bold',
-    color: '#667eea',
-    margin: 0,
-  },
-  resaleBadge: {
-    display: 'inline-block',
-    backgroundColor: '#f6ad55',
-    color: 'white',
-    padding: '6px 12px',
-    borderRadius: '6px',
-    fontSize: '12px',
-    fontWeight: 'bold',
-  },
-  artistCard: {
-    backgroundColor: '#f7fafc',
-    padding: '20px',
-    borderRadius: '10px',
-  },
-  artistName: {
-    fontSize: '18px',
-    fontWeight: 'bold',
-    color: '#667eea',
-    cursor: 'pointer',
-    margin: '10px 0 0 0',
-  },
-  verifiedBadge: {
-    color: '#48bb78',
-  },
-  section: {
-    marginBottom: '15px',
-  },
-  sectionTitle: {
-    fontSize: '20px',
-    fontWeight: 'bold',
-    color: '#2d3748',
-    marginBottom: '10px',
-  },
-  description: {
-    color: '#4a5568',
-    lineHeight: '1.7',
-    fontSize: '16px',
-  },
-  detailsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, 1fr)',
-    gap: '15px',
-  },
-  detailItem: {
-    color: '#4a5568',
-    fontSize: '15px',
-  },
-  tagsContainer: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '8px',
-  },
-  tag: {
-    backgroundColor: '#e2e8f0',
-    padding: '6px 12px',
-    borderRadius: '16px',
-    fontSize: '13px',
-    color: '#4a5568',
-  },
-  ownerBadge: {
-    backgroundColor: '#c6f6d5',
-    color: '#22543d',
-    padding: '15px',
-    borderRadius: '8px',
-    textAlign: 'center',
-    fontWeight: 'bold',
-  },
-  purchaseButton: {
-    backgroundColor: '#667eea',
-    color: 'white',
-    border: 'none',
-    padding: '15px 30px',
-    borderRadius: '8px',
-    fontSize: '16px',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    width: '100%',
-  },
-  soldBadge: {
-    backgroundColor: '#fed7d7',
-    color: '#c53030',
-    padding: '15px',
-    borderRadius: '8px',
-    textAlign: 'center',
-    fontWeight: 'bold',
-  },
-  historySection: {
-    marginTop: '40px',
-    padding: '30px',
-    backgroundColor: '#f7fafc',
-    borderRadius: '12px',
-  },
-  timeline: {
-    position: 'relative',
-    paddingLeft: '30px',
-  },
-  timelineItem: {
-    position: 'relative',
-    marginBottom: '30px',
-    paddingBottom: '30px',
-    borderBottom: '1px solid #e2e8f0',
-  },
-  timelineDot: {
-    position: 'absolute',
-    left: '-35px',
-    top: '5px',
-    width: '12px',
-    height: '12px',
-    borderRadius: '50%',
-    backgroundColor: '#667eea',
-  },
-  timelineContent: {
-    paddingLeft: '10px',
-  },
-  timelineOwner: {
-    fontWeight: 'bold',
-    color: '#2d3748',
-    fontSize: '16px',
-    marginBottom: '5px',
-  },
-  timelineDate: {
-    color: '#718096',
-    fontSize: '14px',
-    marginBottom: '5px',
-  },
-  timelinePrice: {
-    color: '#667eea',
-    fontWeight: 'bold',
-    fontSize: '15px',
-    marginBottom: '5px',
-  },
-  conditionIndicator: {
-    display: 'inline-block',
-    backgroundColor: '#bee3f8',
-    color: '#2c5282',
-    padding: '4px 10px',
-    borderRadius: '12px',
-    fontSize: '12px',
-    fontWeight: 'bold',
-    marginTop: '8px',
-  },
-  similarSection: {
-    marginTop: '40px',
-  },
-  similarGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
-    gap: '20px',
-    marginTop: '20px',
-  },
-  similarCard: {
-    backgroundColor: 'white',
-    borderRadius: '10px',
-    overflow: 'hidden',
-    cursor: 'pointer',
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-    transition: 'transform 0.2s',
-  },
-  similarImage: {
-    width: '100%',
-    height: '200px',
-    objectFit: 'cover',
-  },
-  similarName: {
-    padding: '10px 15px 5px',
-    fontWeight: 'bold',
-    color: '#2d3748',
-    fontSize: '16px',
-  },
-  similarPrice: {
-    padding: '0 15px 5px',
-    color: '#667eea',
-    fontWeight: 'bold',
-    fontSize: '15px',
-  },
-  similarArtist: {
-    padding: '0 15px 10px',
-    color: '#718096',
-    fontSize: '13px',
-  },
 };
 
 export default ArtworkDetail;

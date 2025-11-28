@@ -3,12 +3,14 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { BACKEND_URL, CONTRACT_ADDRESS, MARKETPLACE_V2_ABI } from '../contracts/MarketplaceV2';
 import { ethers } from 'ethers';
+import ArtistProfile from './ArtistProfile';
 
 const AdminDashboard = () => {
   const { user, token, provider } = useAuth();
   const [pendingVerifications, setPendingVerifications] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
   const [allArtworks, setAllArtworks] = useState([]);
+  const [selectedArtist, setSelectedArtist] = useState(null);
   const [statistics, setStatistics] = useState({
     totalUsers: 0,
     totalArtworks: 0,
@@ -328,6 +330,21 @@ const AdminDashboard = () => {
                             </div>
                             <div style={{ display: 'flex', gap: '10px' }}>
                               <button
+                                onClick={() => setSelectedArtist(seller.wallet_address)}
+                                style={{
+                                  backgroundColor: '#667eea',
+                                  color: 'white',
+                                  padding: '10px 20px',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  fontSize: '14px',
+                                  fontWeight: 'bold'
+                                }}
+                              >
+                                👁 View Profile
+                              </button>
+                              <button
                                 onClick={() => handleVerification(seller.wallet_address, 'verified')}
                                 style={{
                                   backgroundColor: '#10b981',
@@ -476,6 +493,14 @@ const AdminDashboard = () => {
           )}
         </div>
       </div>
+      
+      {selectedArtist && (
+        <ArtistProfile 
+          walletAddress={selectedArtist} 
+          isAdminView={true} 
+          onClose={() => setSelectedArtist(null)} 
+        />
+      )}
     </div>
   );
 };
